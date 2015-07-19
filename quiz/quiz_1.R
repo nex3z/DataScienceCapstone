@@ -22,9 +22,9 @@ max(nchar(en_US_news[, ]))
 
 
 # Q4
-step = 10000
-love_cnt = 0
-hate_cnt = 0
+step <- 10000
+love_cnt <- 0
+hate_cnt <- 0
 for (i in 0 : (length(en_US_twitter[,])/step)) {
   print(i*step + 1)
   print((i+1)*step)
@@ -36,8 +36,8 @@ love_cnt / hate_cnt
 
 
 # Q5
-step = 10000
-biostats_id = 0
+step <- 10000
+biostats_id <- 0
 for (i in 0 : (length(en_US_twitter[,])/step)) {
   print(i*step + 1)
   print((i+1)*step)
@@ -52,8 +52,8 @@ en_US_twitter[biostats_id, ]
 
 
 # Q6
-step = 10000
-sentence_cnt = 0
+step <- 10000
+sentence_cnt <- 0
 for (i in 0 : (length(en_US_twitter[,])/step)) {
   print(i*step + 1)
   print((i+1)*step)
