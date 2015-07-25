@@ -1,0 +1,127 @@
+---
+title: "Milestone Report for Data Science Capstone"
+author: "Tianxing Li"
+date: "July 25, 2015"
+output: html_document
+---
+
+This report gives exploratory analysis on the given data. The data is from a corpus called HC Corpora (www.corpora.heliohost.org), including files named LOCALE.blogs.txt where LOCALE is the each of the four locales en_US, de_DE, ru_RU and fi_FI. This report focusses mainly on the English data: ```en_US.twitter.txt```,  ```en_US.blogs.txt``` and ```en_US.news.txt```.
+
+## 1. Load the data
+
+First of all, load the data into R.
+
+```{r, cache=TRUE}
+if(!dir.exists("./data")) {
+  dir.create("./data")
+  download.file("https://d396qusza40orc.cloudfront.net/dsscapstone/dataset/Coursera-SwiftKey.zip",
+                "./data/Coursera-SwiftKey.zip", method="curl")
+  unzip("./data/Coursera-SwiftKey.zip", exdir = "./data")
+}
+
+en_US_twitter <- readLines("./data/final/en_US/en_US.twitter.txt", skipNul=T, encoding="UTF-8")
+en_US_blogs <- readLines("./data/final/en_US/en_US.blogs.txt", skipNul=T, encoding="UTF-8")
+en_US_news  <- readLines("./data/final/en_US/en_US.news.txt", skipNul=T, encoding="UTF-8")
+```
+
+Then we can take a quick look at the raw data.
+```{r, cache=TRUE}
+library(knitr)
+twitter_line_cnt <- length(en_US_twitter)
+twitter_word_cnt <- sum(sapply(strsplit(en_US_twitter, "\\s+"), length))
+blogs_line_cnt <- length(en_US_blogs)
+blogs_word_cnt <- sum(sapply(strsplit(en_US_blogs, "\\s+"), length))
+news_line_cnt <- length(en_US_news)
+news_word_cnt <- sum(sapply(strsplit(en_US_news, "\\s+"), length))
+
+line_count <- c(twitter_line_cnt, blogs_line_cnt, news_line_cnt)
+word_count <- c(twitter_word_cnt, blogs_word_cnt, news_word_cnt)
+
+info = data.frame(row.names=c("en_US.twitter.txt", "en_US.blogs.txt", "en_US.news.txt"), 
+                  LineCount=line_count,
+                  WordCount=word_count,
+                  WordLineRate=word_count/line_count)
+
+kable(info)
+```
+
+
+## 2. Clean the data
+
+Form the summary of the raw data, we can see that twitter data has lowest word / line rate and the news data has lowest word / line value. The twitters are informal with less grammar and more typo. The blogs and the news have much higher word / line rate. The news data are often well written short articles on a specific topic, which is more valuable for training the model. Blogs has the average characteristic between twitters and news.
+
+The raw data is very big, we need to sample the three raw data. Since the reason above, we should take more news data and less twitter data.
+
+```{r, cache=TRUE}
+TOTAL_ITEM = 10000
+PROPORTION = c(0.2, 0.3, 0.5)
+set.seed(10086)
+
+sampled_twitter <- en_US_twitter[sample(1:twitter_line_cnt, TOTAL_ITEM*PROPORTION[1])]
+rm(en_US_twitter)
+sampled_blogs <- en_US_blogs[sample(1:blogs_line_cnt, TOTAL_ITEM*PROPORTION[2])]
+rm(en_US_blogs)
+sampled_news <- en_US_news[sample(1:news_line_cnt, TOTAL_ITEM*PROPORTION[3])]
+rm(en_US_news)
+
+sampled_data <- c(sampled_twitter, sampled_blogs, sampled_news)
+```
+
+The sampled data is still raw. It contains punctuation, hashtag, white spaces, and mixed with upper and lower cases. We need to clean the data before perform any further analysis.
+
+```{r, cache=TRUE}
+library("tm")
+sampled_data_corpus <- Corpus(VectorSource(sampled_data))
+sampled_data_corpus <- tm_map(sampled_data_corpus, PlainTextDocument)
+sampled_data_corpus <- tm_map(sampled_data_corpus, stripWhitespace)
+sampled_data_corpus <- tm_map(sampled_data_corpus, removePunctuation)
+sampled_data_corpus <- tm_map(sampled_data_corpus, removeNumbers)
+```
+
+
+## 3. Show the frequency of words
+
+To show the frequency summary of words, first we need to perform tokenization.
+
+```{r, cache=TRUE, message=FALSE, results="hide"}
+library(RWeka)
+library(slam)
+
+options(mc.cores=1)
+u_gram_tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 1, max = 1))
+b_gram_tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 2, max = 2))
+t_gram_tokenizer <- function(x) NGramTokenizer(x, Weka_control(min = 3, max = 3))
+
+u_tdm <- TermDocumentMatrix(sampled_data_corpus, control = list(tokenize = u_gram_tokenizer))
+b_tdm <- TermDocumentMatrix(sampled_data_corpus, control = list(tokenize = b_gram_tokenizer))
+t_tdm <- TermDocumentMatrix(sampled_data_corpus, control = list(tokenize = t_gram_tokenizer))
+
+get_top_freq <- function(tdm)  {
+  tdm_up <- rollup(tdm, 2, na.rm=TRUE, FUN = sum)
+  inspect_tdm <- inspect(tdm_up)
+  freq_mat <- data.frame(ST = rownames(inspect_tdm), Freq = rowSums(inspect_tdm))
+  sort <- freq_mat[with(freq_mat, order(-Freq)), ]
+  top <- sort[1:20, ]
+  return(top)
+}
+
+u_top <- get_top_freq(u_tdm)
+b_top <- get_top_freq(b_tdm)
+t_top <- get_top_freq(t_tdm)
+```
+
+Then we can plot the most frequently used words.
+
+```{r, cache=TRUE}
+barplot(u_top$Freq, names=u_top$ST, las=2, main="Uni-gram top 20")
+barplot(b_top$Freq, names=b_top$ST, las=2, main="Bi-gram top 20")
+barplot(t_top$Freq, names=t_top$ST, las=2, main="Tri-gram top 20")
+```
+
+
+## 4. Plans
+
+Now that the data is sampled and cleaned, it can be used to trained the model and build the prediction alogrithm. The model and the prediction alogrithm can be used to power the Shiny app. 
+
+The app should include a text box for input. With each word input, the alogrithm predicts the possible next words and the app displays some of the most likely words in the list below.
+
