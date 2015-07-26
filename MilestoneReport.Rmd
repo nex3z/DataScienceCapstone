@@ -114,9 +114,24 @@ Then we can plot the most frequently used words.
 
 ```{r, cache=TRUE}
 barplot(u_top$Freq, names=u_top$ST, las=2, main="Uni-gram top 20")
-barplot(b_top$Freq, names=b_top$ST, las=2, main="Bi-gram top 20")
-barplot(t_top$Freq, names=t_top$ST, las=2, main="Tri-gram top 20")
 ```
+
+The most used words from the uni-gram are determiners, conjunctions and prepositions, like "the", "and", "that" and "for".
+
+```{r, cache=TRUE}
+barplot(b_top$Freq, names=b_top$ST, las=2, main="Bi-gram top 20")
+```
+
+The most used phrases from the bi-gram are the phrases with determiners, conjunctions and prepositions. The phrases with the word "the" take 9 position out of the top 20.
+
+```{r, cache=TRUE, warning=FALSE}
+.pardefault <- par()
+par(mai=c(1.5, 1, 1, 1))
+barplot(t_top$Freq, names=t_top$ST, las=2, main="Tri-gram top 20")
+par(.pardefault)
+```
+
+The most used phrases from the tri-gram also contains a lot "the" phrases, as well as some useful expressions like "a lot of" and "as well as".
 
 
 ## 4. Plans
